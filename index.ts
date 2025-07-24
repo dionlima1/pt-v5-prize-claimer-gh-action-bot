@@ -24,34 +24,47 @@ async function getPoolTokenPriceUSD(): Promise<number | null> {
   }
 }
 
-const main = async () => {
-  const envVars: PrizeClaimerEnvVars = loadPrizeClaimerEnvVars();
-  const provider: BaseProvider = getProvider(envVars);
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-  const relayerAccount: RelayerAccount = await instantiateRelayerAccount(
-    provider,
-    envVars.CUSTOM_RELAYER_PRIVATE_KEY
-  );
+const loop = async () => {
+  while (true) {
+    console.log(`\n🔄 Executando verificação às ${new Date().toISOString()}`);
 
-  const tokenPriceUSD = await getPoolTokenPriceUSD();
-  if (!tokenPriceUSD) {
-    console.error("Erro ao buscar o preço do token POOL. Abortando.");
-    return;
+    try {
+      const envVars: PrizeClaimerEnvVars = loadPrizeClaimerEnvVars();
+      const provider: BaseProvider = getProvider(envVars);
+
+      const relayerAccount: RelayerAccount = await instantiateRelayerAccount(
+        provider,
+        envVars.CUSTOM_RELAYER_PRIVATE_KEY
+      );
+
+      const tokenPriceUSD = await getPoolTokenPriceUSD();
+      if (!tokenPriceUSD) {
+        console.error("⚠️ Erro ao buscar o preço do token POOL. Pulando esse ciclo.");
+      } else {
+        const config: PrizeClaimerConfig = {
+          ...relayerAccount,
+          provider,
+          chainId: envVars.CHAIN_ID,
+          rewardRecipient: envVars.REWARD_RECIPIENT || relayerAccount.address,
+          minProfitThresholdUsd: Number(envVars.MIN_PROFIT_THRESHOLD_USD),
+          covalentApiKey: "", // desativado
+          contractJsonUrl: envVars.CONTRACT_JSON_URL,
+          subgraphUrl: envVars.SUBGRAPH_URL,
+        };
+
+        const contracts: ContractsBlob = await downloadContractsBlob(config.contractJsonUrl, nodeFetch);
+        await runPrizeClaimer(contracts, config);
+      }
+
+    } catch (err: any) {
+      console.warn("⚠️ Erro na execução do ciclo:", err?.message || err);
+    }
+
+    console.log("⏳ Aguardando 60 segundos para o próximo ciclo...\n");
+    await sleep(60_000);
   }
-
-  const config: PrizeClaimerConfig = {
-    ...relayerAccount,
-    provider,
-    chainId: envVars.CHAIN_ID,
-    rewardRecipient: envVars.REWARD_RECIPIENT,
-    minProfitThresholdUsd: Number(envVars.MIN_PROFIT_THRESHOLD_USD),
-    covalentApiKey: "", // desativado
-    contractJsonUrl: envVars.CONTRACT_JSON_URL,
-    subgraphUrl: envVars.SUBGRAPH_URL,
-  };
-
-  const contracts: ContractsBlob = await downloadContractsBlob(config.contractJsonUrl, nodeFetch);
-  await runPrizeClaimer(contracts, config);
 };
 
-main();
+loop();
