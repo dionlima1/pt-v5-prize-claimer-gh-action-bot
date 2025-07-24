@@ -1,8 +1,11 @@
 name: CronJob - Prize Claimer Bot - Optimism
+
 on:
+  workflow_dispatch: {}   # Habilita o botão "Run workflow"
   schedule:
-    - cron: "10 * * * *" # ie. 4:10pm, 5:10pm, 6:10pm ... etc.
+    - cron: "10 * * * *"  # Executa a cada hora no minuto 10
   push:
+
 env:
   CHAIN_ID: 10
   MIN_PROFIT_THRESHOLD_USD: 0.1
@@ -13,7 +16,9 @@ env:
   CONTRACT_JSON_URL: 'https://raw.githubusercontent.com/GenerationSoftware/pt-v5-mainnet/396f04daedc5a38935460ddf47d2f10e9ac1fec6/deployments/optimism/contracts.json'
   SUBGRAPH_URL: 'https://api.goldsky.com/api/public/project_cm3xb1e8iup5601yx9mt5caat/subgraphs/pt-v5-optimism/v0.0.4/gn'
   NODE_OPTIONS: "--max_old_space_size=32768"
+
 permissions: write-all
+
 jobs:
   runCLI:
     name: Prize Claimer Bot
@@ -23,6 +28,7 @@ jobs:
       matrix:
         node: ["20.11.1"]
         os: [ubuntu-latest]
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
